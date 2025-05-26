@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with LLM</title>
+    <script src="/static/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f4f4f4; /* Light grey background */
+        }
+
+        #left-menu {
+            width: 250px;
+            background-color: #ff6600; /* Orange */
+            color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #left-menu h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            border-bottom: 2px solid white;
+            padding-bottom: 10px;
+            width: 100%;
+            text-align: center;
+        }
+
+        #chat-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: white; /* White main area */
+        }
+
+        #message-display {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            line-height: 1.4;
+        }
+
+        .user-message {
+            background-color: #ffeadb; /* Light orange for user */
+            color: #333;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+
+        .llm-message {
+            background-color: #e0e0e0; /* Light grey for LLM */
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+
+        .llm-message pre {
+            background-color: #333; /* Dark background for code blocks */
+            color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .llm-message code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+
+        #input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+
+        #message-input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            margin-right: 10px;
+            font-size: 1em;
+        }
+
+        #send-button, #stop-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        #send-button {
+            background-color: #ff6600; /* Orange */
+            color: white;
+        }
+
+        #send-button:hover {
+            background-color: #e65c00; /* Darker orange */
+        }
+
+        #stop-button {
+            background-color: #cc0000; /* Red for stop */
+            color: white;
+            margin-left: 10px; /* Spacing from send button if it were next to it */
+            display: none; /* Initially hidden */
+        }
+
+        #stop-button:hover {
+            background-color: #b30000; /* Darker red */
+        }
+    </style>
+</head>
+<body>
+    <div id="left-menu">
+        <h2>Menu</h2>
+        <!-- Placeholder for menu items -->
+        <p style="text-align: center; font-size: 0.9em;">Future menu items will appear here.</p>
+    </div>
+
+    <div id="chat-container">
+        <div id="message-display">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button id="send-button">Send</button>
+            <button id="stop-button">Stop</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const messageDisplay = document.getElementById('message-display'); // The main area where chat messages are displayed.
+        const messageInput = document.getElementById('message-input');   // The text input field for the user to type messages.
+        const sendButton = document.getElementById('send-button');       // The button to send the typed message.
+        const stopButton = document.getElementById('stop-button');       // The button to stop an ongoing LLM response stream.
+
+        // --- State Variables ---
+
+        /**
+         * @type {Array<{role: "user" | "assistant", content: string}>}
+         * chatHistory: Stores the entire conversation.
+         * Each element is an object with 'role' ("user" or "assistant") and 'content' (the message text).
+         * This history is sent to the backend with each new message to provide context to the LLM,
+         * enabling it to have a coherent conversation.
+         */
+        let chatHistory = [];
+
+        /**
+         * @type {AbortController | null}
+         * abortController: Used to manage and cancel the current Fetch API request.
+         * When the "Stop" button is clicked, this controller's abort() method is called,
+         * which signals the ongoing fetch request to terminate.
+         */
+        let abortController = null; 
+
+        // --- Core Functions ---
+
+        /**
+         * Adds a message to the chat display area in the UI.
+         * @param {string} content - The textual content of the message.
+         * @param {'user' | 'llm'} sender - Specifies if the message is from the 'user' or 'llm' (assistant).
+         * @param {boolean} [isStreaming=false] - If true, marks this message element as the target for incoming LLM stream chunks.
+         * @returns {HTMLElement} The newly created message HTML element.
+         */
+        function addMessageToDisplay(content, sender, isStreaming = false) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'llm-message');
+            
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'llm-message');
+            
+            // For LLM messages, content is rendered as Markdown using the `marked.parse()` function
+            // from the `marked.min.js` library (loaded in <head>).
+            // User messages are displayed as plain text to prevent XSS or unwanted rendering.
+            if (sender === 'llm') {
+                messageElement.innerHTML = marked.parse(content);
+            } else {
+                messageElement.textContent = content;
+            }
+
+            if (isStreaming) {
+                // If this is a new LLM message element intended for streaming content into,
+                // mark it with a 'data-streaming' attribute. This allows `updateLastLLMMessage`
+                // to easily find and append new chunks to this specific element.
+                messageElement.dataset.streaming = true; 
+                messageDisplay.appendChild(messageElement);
+            } else if (sender === 'llm' && messageDisplay.querySelector('.llm-message[data-streaming="true"]')) {
+                // This condition handles the final update to an LLM message that was being streamed.
+                // When the stream ends, this ensures the complete message is parsed and displayed,
+                // and the 'data-streaming' marker is removed.
+                const existingStreamElement = messageDisplay.querySelector('.llm-message[data-streaming="true"]');
+                existingStreamElement.innerHTML = marked.parse(content); // Render final content
+                delete existingStreamElement.dataset.streaming; // Remove streaming marker
+            } else {
+                // Default behavior: append a new message element.
+                // This is used for user messages and for LLM messages if not part of an active stream.
+                 messageDisplay.appendChild(messageElement);
+            }
+            
+            // Automatically scroll the message display area to the bottom to show the newest message.
+            messageDisplay.scrollTop = messageDisplay.scrollHeight; 
+            return messageElement;
+        }
+
+        /**
+         * Updates the content of the currently streaming LLM message element with a new chunk of text.
+         * This function is called repeatedly as new data arrives from the LLM stream.
+         * @param {string} chunk - A piece of text (chunk) received from the LLM stream.
+         */
+        function updateLastLLMMessage(chunk) {
+            // Find the LLM message element that is currently marked for streaming.
+            let lastLLMMessageElement = messageDisplay.querySelector('.llm-message[data-streaming="true"]');
+            
+            if (!lastLLMMessageElement) {
+                // Fallback: If, for some reason, no streaming element exists, create a new one.
+                // This should ideally not be hit if `addMessageToDisplay("Thinking...", 'llm', true)`
+                // was called before starting the stream.
+                lastLLMMessageElement = addMessageToDisplay("", 'llm', true);
+            }
+            
+            // Accumulate the streamed chunks. Store the raw, unprocessed text in a 'data-raw-content'
+            // attribute. This is important because Markdown should be parsed on the *entire* message
+            // content at each update, not on individual chunks, to ensure correct rendering of complex
+            // Markdown structures (like code blocks, lists) that might span multiple chunks.
+            let currentContent = lastLLMMessageElement.dataset.rawContent || "";
+            currentContent += chunk;
+            lastLLMMessageElement.dataset.rawContent = currentContent; // Store accumulated raw text
+            
+            // Re-render the entire accumulated content as Markdown.
+            lastLLMMessageElement.innerHTML = marked.parse(currentContent);
+
+            // Keep the message display scrolled to the bottom.
+            messageDisplay.scrollTop = messageDisplay.scrollHeight;
+        }
+
+        /**
+         * Handles the process of sending a user's message to the backend and displaying the LLM's response.
+         * This is the primary function for chat interaction.
+         */
+        async function sendMessage() {
+            const messageText = messageInput.value.trim(); // Get text from input, remove leading/trailing whitespace.
+            if (!messageText) return; // Do nothing if the message is empty.
+
+            // 1. Display User's Message & Update History:
+            addMessageToDisplay(messageText, 'user'); // Add user's message to the UI.
+            // Add user's message to the local `chatHistory`. This history is sent to the backend
+            // to provide conversational context to the LLM.
+            chatHistory.push({ role: 'user', content: messageText });
+
+            // 2. UI Updates & State Management for Sending:
+            messageInput.value = ''; // Clear the input field.
+            sendButton.disabled = true; // Disable the send button to prevent multiple submissions.
+            stopButton.style.display = 'inline-block'; // Show the "Stop" button.
+
+            // 3. Prepare for Fetch Request:
+            // Create a new AbortController for this specific request. This allows the
+            // request to be cancelled if the user clicks the "Stop" button.
+            abortController = new AbortController(); 
+
+            try {
+                // Prepare the payload for the POST request to the backend's /chat endpoint.
+                const payload = {
+                    message: messageText, // The new message from the user.
+                    // Send the chat history *excluding* the latest user message.
+                    // The backend is responsible for adding the current user message to the
+                    // list of messages it sends to the LLM. This ensures the LLM gets the
+                    // full context including the message it's about to respond to.
+                    history: chatHistory.slice(0, -1) 
+                };
+
+                // 4. Make the Fetch Request for Streaming Response:
+                // The `fetch` API is used to make a POST request to the backend.
+                // The `signal` property is crucial for enabling abortion of the request.
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                    signal: abortController.signal // Pass the abort signal to fetch
+                });
+
+                if (!response.ok) {
+                    // Handle HTTP errors from the backend (e.g., LLM server error, validation error).
+                    const errorData = await response.json(); // Attempt to parse error response as JSON.
+                    const errorMessage = `Error: ${errorData.detail || response.statusText}`;
+                    addMessageToDisplay(errorMessage, 'llm');
+                    // Add the error message to chat history for context, if needed for future retries or diagnosis.
+                    chatHistory.push({ role: 'assistant', content: errorMessage });
+                    return; // Stop further processing for this message.
+                }
+
+                // 5. Process the Streaming Response:
+                const reader = response.body.getReader(); // Get a reader for the response body stream.
+                const decoder = new TextDecoder();        // Used to decode Uint8Array chunks from the stream into text.
+                let llmResponseText = "";                 // Accumulates the full text of the LLM's response.
+                
+                // Create a placeholder "Thinking..." message for the LLM. This element will be
+                // dynamically updated in real-time by `updateLastLLMMessage` as chunks arrive.
+                addMessageToDisplay("Thinking...", 'llm', true); 
+
+                // Loop to read chunks from the stream:
+                while (true) {
+                    const { done, value } = await reader.read(); // Read the next chunk.
+                    if (done) {
+                        // `done` is true when the stream has finished sending all data.
+                        // Finalize the streaming message element by removing its 'data-streaming' attribute.
+                        // Also, clear 'data-raw-content' as it's no longer needed for this message.
+                        const streamingElement = messageDisplay.querySelector('.llm-message[data-streaming="true"]');
+                        if(streamingElement) {
+                            delete streamingElement.dataset.streaming;
+                            delete streamingElement.dataset.rawContent; 
+                        }
+                        break; // Exit the loop as the stream is complete.
+                    }
+                    // Decode the received chunk (Uint8Array) into a string.
+                    const chunk = decoder.decode(value, { stream: true }); 
+                    llmResponseText += chunk; // Append the chunk to the full response text.
+                    updateLastLLMMessage(chunk); // Update the UI with the new chunk, rendering Markdown.
+                }
+                
+                // 6. Add Complete LLM Response to History:
+                // Once the stream is finished, add the entire LLM response to the `chatHistory`.
+                if (llmResponseText) { // Only add if there's actual content.
+                    chatHistory.push({ role: 'assistant', content: llmResponseText });
+                }
+
+            } catch (error) {
+                // 7. Handle Errors (Fetch, Abort, Network):
+                if (error.name === 'AbortError') {
+                    // This error occurs if `abortController.abort()` was called (e.g., by Stop button).
+                    const stopMessage = 'Request stopped by user.';
+                    addMessageToDisplay(stopMessage, 'llm');
+                    chatHistory.push({ role: 'assistant', content: stopMessage });
+                    // Finalize the streaming element, displaying whatever content was received before stopping,
+                    // and append "(Stopped)" to indicate it was interrupted.
+                    const streamingElement = messageDisplay.querySelector('.llm-message[data-streaming="true"]');
+                    if(streamingElement) {
+                        streamingElement.innerHTML = marked.parse((streamingElement.dataset.rawContent || "") + " (Stopped)");
+                        delete streamingElement.dataset.streaming;
+                        delete streamingElement.dataset.rawContent;
+                    }
+                } else {
+                    // Handle other network errors or unexpected issues during fetch.
+                    const networkErrorMessage = `Network error: ${error.message}`;
+                    addMessageToDisplay(networkErrorMessage, 'llm');
+                    chatHistory.push({ role: 'assistant', content: networkErrorMessage });
+                }
+                console.error("Fetch error:", error); // Log the full error to the browser console for debugging.
+            } finally {
+                // 8. Cleanup After Request:
+                // This block executes regardless of whether the try block succeeded or an error occurred.
+                sendButton.disabled = false; // Re-enable the send button.
+                stopButton.style.display = 'none'; // Hide the stop button.
+                abortController = null; // Reset the AbortController, ready for the next request.
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Listen for clicks on the "Send" button.
+        sendButton.addEventListener('click', sendMessage);
+
+        // Listen for "Enter" key press in the message input field.
+        // If Enter is pressed (without Shift, for multiline later if needed), send the message.
+        messageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevent default Enter behavior (e.g., new line in some inputs).
+                sendMessage();
+            }
+        });
+
+        /**
+         * Handles the click event for the "Stop" button.
+         * If an `abortController` exists for an active fetch request, it calls `abort()`
+         * on it, which triggers an 'AbortError' in the `sendMessage` function's catch block.
+         */
+        stopButton.addEventListener('click', () => {
+            if (abortController) {
+                abortController.abort(); 
+                // The actual UI update (e.g., "Request stopped by user") is handled
+                // in the `catch (error.name === 'AbortError')` block within `sendMessage`.
+            }
+        });
+
+        // --- Optional Initial Message ---
+        // Uncomment these lines to add an initial greeting message from the assistant when the page loads.
+        // addMessageToDisplay("Hello! I am your RAG-enabled AI assistant. How can I help you today?", 'llm');
+        // chatHistory.push({ role: 'assistant', content: "Hello! I am your RAG-enabled AI assistant. How can I help you today?" });
+    </script>
+</body>
+</html>
