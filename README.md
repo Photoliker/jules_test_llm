@@ -1,124 +1,124 @@
-# ChatLLM with RAG Integration
+# RAG 통합 ChatLLM
 
-## Description
+## 설명
 
-This project is a web-based chat application that allows users to interact with a Large Language Model (LLM). It features streaming responses, chat history, Markdown rendering for LLM messages, and a Retrieval Augmented Generation (RAG) system using Qdrant as the vector database. Users can upload documents to the Qdrant database, and the application will retrieve relevant information from these documents to provide more contextually accurate answers from the LLM.
+이 프로젝트는 사용자가 대규모 언어 모델(LLM)과 상호 작용할 수 있는 웹 기반 채팅 애플리케이션입니다. 스트리밍 응답, 채팅 기록, LLM 메시지의 Markdown 렌더링 기능을 제공하며, Qdrant를 벡터 데이터베이스로 사용하는 검색 증강 생성(RAG) 시스템을 갖추고 있습니다. 사용자는 Qdrant 데이터베이스에 문서를 업로드할 수 있으며, 애플리케이션은 이 문서에서 관련 정보를 검색하여 LLM에게 보다 문맥에 맞는 정확한 답변을 제공하도록 합니다.
 
-## Features
+## 주요 기능
 
-*   **Interactive Chat Interface:** Clean and modern UI for chatting.
-*   **Streaming LLM Responses:** Messages from the LLM are displayed token by token in real-time.
-*   **Markdown Rendering:** LLM responses are rendered as Markdown, allowing for formatted text, code blocks, etc.
-*   **Chat History:** The conversation history is maintained and sent to the LLM for context.
-*   **Retrieval Augmented Generation (RAG):**
-    *   Uses **Qdrant** as a vector database.
-    *   Uses **Sentence Transformers** (`all-MiniLM-L6-v2`) for generating text embeddings.
-    *   Endpoint (`/upload_document`) to upload text documents for indexing.
-    *   Retrieves relevant document snippets to augment LLM prompts for more informed answers.
-*   **Stop Generation:** A "Stop" button allows users to interrupt the LLM's response stream.
-*   **FastAPI Backend:** Robust and asynchronous Python backend.
-*   **Vanilla JavaScript Frontend:** Simple and efficient frontend without heavy frameworks.
+*   **대화형 채팅 인터페이스:** 깔끔하고 현대적인 UI의 채팅 환경.
+*   **스트리밍 LLM 응답:** LLM의 메시지가 토큰 단위로 실시간 표시됩니다.
+*   **Markdown 렌더링:** LLM 응답이 Markdown으로 렌더링되어 서식 있는 텍스트, 코드 블록 등을 표현할 수 있습니다.
+*   **채팅 기록:** 대화 기록이 유지되며 LLM에 컨텍스트로 전송됩니다.
+*   **검색 증강 생성 (RAG):**
+    *   벡터 데이터베이스로 **Qdrant**를 사용합니다.
+    *   텍스트 임베딩 생성을 위해 **Sentence Transformers** (`all-MiniLM-L6-v2`)를 사용합니다.
+    *   인덱싱을 위한 텍스트 문서 업로드 엔드포인트 (`/upload_document`).
+    *   LLM 프롬프트를 보강하여 더 정보에 입각한 답변을 제공하기 위해 관련 문서 스니펫을 검색합니다.
+*   **생성 중지:** "중지" 버튼으로 사용자가 LLM의 응답 스트림을 중단할 수 있습니다.
+*   **FastAPI 백엔드:** 강력하고 비동기적인 Python 백엔드.
+*   **Vanilla JavaScript 프론트엔드:** 무거운 프레임워크 없이 간단하고 효율적인 프론트엔드.
 
-## Setup and Installation
+## 설정 및 설치
 
-Follow these steps to set up and run the application:
+애플리케이션을 설정하고 실행하려면 다음 단계를 따르십시오:
 
-**1. Python Virtual Environment:**
+**1. Python 가상 환경:**
 
-It's highly recommended to use a Python virtual environment to manage dependencies.
+의존성 관리를 위해 Python 가상 환경을 사용하는 것을 강력히 권장합니다.
 
 ```bash
-# Create a virtual environment (e.g., named .venv)
+# 가상 환경 생성 (예: .venv)
 python3 -m venv .venv
 
-# Activate the virtual environment
-# On macOS and Linux:
+# 가상 환경 활성화
+# macOS 및 Linux:
 source .venv/bin/activate
-# On Windows:
+# Windows:
 # .venv\Scripts\activate
 ```
 
-**2. Install Dependencies:**
+**2. 의존성 설치:**
 
-Install the required Python packages using `pip`:
+`pip`를 사용하여 필요한 Python 패키지를 설치합니다:
 
 ```bash
 pip install -r requirements.txt
 ```
-Key dependencies include `fastapi`, `uvicorn`, `qdrant-client`, and `sentence-transformers`. The latter two are crucial for the RAG functionality.
+주요 의존성에는 `fastapi`, `uvicorn`, `qdrant-client`, `sentence-transformers`가 포함됩니다. 뒤의 두 가지는 RAG 기능에 매우 중요합니다.
 
-**⚠️ Important Note on RAG Dependencies:**
-During development in the provided environment, a "No space left on device" error was encountered while installing dependencies, particularly `torch` (a sub-dependency of `sentence-transformers`). This prevented a full, clean installation of all RAG-related packages.
-**If you encounter similar issues, the RAG features (document upload and context retrieval) may not function correctly or at all.** Ensure your environment has sufficient disk space and can successfully install all packages in `requirements.txt`.
+**⚠️ RAG 의존성에 대한 중요 참고 사항:**
+제공된 환경에서 개발 중, 의존성 설치 시, 특히 `torch` (`sentence-transformers`의 하위 의존성) 설치 과정에서 "No space left on device" (장치에 남은 공간 없음) 오류가 발생했습니다. 이로 인해 모든 RAG 관련 패키지의 완전하고 깨끗한 설치가 불가능했습니다.
+**유사한 문제가 발생하면 RAG 기능(문서 업로드 및 컨텍스트 검색)이 올바르게 작동하지 않거나 전혀 작동하지 않을 수 있습니다.** 사용 환경에 충분한 디스크 공간이 있는지, 그리고 `requirements.txt`의 모든 패키지를 성공적으로 설치할 수 있는지 확인하십시오.
 
-**3. Set Up Qdrant Vector Database:**
+**3. Qdrant 벡터 데이터베이스 설정:**
 
-The RAG system requires a running Qdrant instance. The application is configured to connect to Qdrant at `localhost:6333`.
+RAG 시스템에는 실행 중인 Qdrant 인스턴스가 필요합니다. 애플리케이션은 `localhost:6333`에서 Qdrant에 연결하도록 구성되어 있습니다.
 
-The easiest way to run Qdrant is using Docker:
+Qdrant를 실행하는 가장 쉬운 방법은 Docker를 사용하는 것입니다:
 
 ```bash
 docker run -p 6333:6333 -p 6334:6334 \
     -v $(pwd)/qdrant_storage:/qdrant/storage \
     qdrant/qdrant
 ```
-This command mounts a local directory (`qdrant_storage`) for persistent storage.
+이 명령은 영구 저장을 위해 로컬 디렉토리(`qdrant_storage`)를 마운트합니다.
 
-**4. LLM Server:**
+**4. LLM 서버:**
 
-This application requires a separate LLM server that is compatible with the OpenAI API format for chat completions.
-*   The application is configured in `main.py` to connect to an LLM API at `LLM_API_URL = "http://localhost:1234/v1/chat/completions"`.
-*   The default model is `LLM_MODEL_NAME = "gemma-3-27b-it"`.
+이 애플리케이션은 채팅 완성을 위한 OpenAI API 형식과 호환되는 별도의 LLM 서버가 필요합니다.
+*   애플리케이션은 `main.py`에서 `LLM_API_URL = "http://localhost:1234/v1/chat/completions"`의 LLM API에 연결하도록 구성되어 있습니다.
+*   기본 모델은 `LLM_MODEL_NAME = "gemma-3-27b-it"`입니다.
 
-You can use tools like **LM Studio** or **Ollama (with an OpenAI-compatible proxy/adapter)** to serve a local LLM. Ensure the model specified in `LLM_MODEL_NAME` is loaded and accessible through the server's OpenAI-compatible endpoint.
+**LM Studio** 또는 **Ollama (OpenAI 호환 프록시/어댑터 사용)**와 같은 도구를 사용하여 로컬 LLM을 제공할 수 있습니다. `LLM_MODEL_NAME`에 지정된 모델이 로드되어 있고 서버의 OpenAI 호환 엔드포인트를 통해 액세스할 수 있는지 확인하십시오.
 
-## Running the Application
+## 애플리케이션 실행
 
-Once the setup is complete:
+설정이 완료되면 다음을 수행합니다:
 
-1.  Ensure your Python virtual environment is activated.
-2.  Ensure your Qdrant instance is running.
-3.  Ensure your LLM server is running and configured.
-4.  Run the FastAPI application using Uvicorn:
+1.  Python 가상 환경이 활성화되어 있는지 확인합니다.
+2.  Qdrant 인스턴스가 실행 중인지 확인합니다.
+3.  LLM 서버가 실행 중이고 구성되어 있는지 확인합니다.
+4.  Uvicorn을 사용하여 FastAPI 애플리케이션을 실행합니다:
 
     ```bash
     uvicorn main:app --reload --host 0.0.0.0 --port 8000
     ```
-    *   `--reload`: Enables auto-reloading on code changes (for development).
-    *   `--host 0.0.0.0`: Makes the server accessible from your local network.
-    *   `--port 8000`: Specifies the port. You can change this if needed.
+    *   `--reload`: 코드 변경 시 자동 재로드를 활성화합니다 (개발용).
+    *   `--host 0.0.0.0`: 로컬 네트워크에서 서버에 액세스할 수 있도록 합니다.
+    *   `--port 8000`: 포트를 지정합니다. 필요한 경우 변경할 수 있습니다.
 
-## How to Use
+## 사용 방법
 
-**1. Access the Web Interface:**
+**1. 웹 인터페이스 접속:**
 
-Open your web browser and navigate to `http://localhost:8000` (or the port you configured).
+웹 브라우저를 열고 `http://localhost:8000` (또는 구성한 포트)으로 이동합니다.
 
-**2. Chatting:**
+**2. 채팅:**
 
-*   Type your message in the input box at the bottom of the chat interface.
-*   Press Enter or click the "Send" button.
-*   The LLM's response will be streamed to the chat display.
+*   채팅 인터페이스 하단의 입력 상자에 메시지를 입력합니다.
+*   Enter 키를 누르거나 "전송" 버튼을 클릭합니다.
+*   LLM의 응답이 채팅 디스플레이로 스트리밍됩니다.
 
-**3. Stop Generation:**
+**3. 생성 중지:**
 
-*   If the LLM is generating a long response, you can click the "Stop" button to interrupt it.
+*   LLM이 긴 응답을 생성하는 경우 "중지" 버튼을 클릭하여 중단할 수 있습니다.
 
-**4. Uploading Documents (for RAG):**
+**4. 문서 업로드 (RAG용):**
 
-If the RAG dependencies (`qdrant-client`, `sentence-transformers`, and their sub-dependencies like `torch`) were installed successfully and Qdrant is running, you can upload documents to be used for context retrieval.
+RAG 의존성(`qdrant-client`, `sentence-transformers` 및 `torch`와 같은 하위 의존성)이 성공적으로 설치되었고 Qdrant가 실행 중인 경우, 컨텍스트 검색에 사용할 문서를 업로드할 수 있습니다.
 
-Use a tool like `curl` or Postman to send a POST request to the `/upload_document` endpoint.
+`curl`이나 Postman과 같은 도구를 사용하여 `/upload_document` 엔드포인트로 POST 요청을 보냅니다.
 
-**Example using `curl`:**
+**`curl` 사용 예시:**
 
 ```bash
 curl -X POST -H "Content-Type: application/json" \
-     -d '{"text_content": "Artificial intelligence (AI) is rapidly transforming various industries. Machine learning, a subset of AI, involves training algorithms on data to make predictions or decisions."}' \
+     -d '{"text_content": "인공 지능(AI)은 다양한 산업을 빠르게 변화시키고 있습니다. AI의 하위 집합인 머신 러닝은 데이터를 기반으로 알고리즘을 학습시켜 예측이나 결정을 내립니다."}' \
      http://localhost:8000/upload_document
 ```
 
-Response:
+응답:
 ```json
 {
   "message": "Document uploaded and indexed successfully.",
@@ -126,16 +126,16 @@ Response:
 }
 ```
 
-Once documents are uploaded, the chat system will automatically try to find relevant snippets from these documents based on your message and provide them as context to the LLM.
+문서가 업로드되면 채팅 시스템은 사용자의 메시지를 기반으로 이러한 문서에서 관련 스니펫을 자동으로 찾아 LLM에 컨텍스트로 제공합니다.
 
-## File Structure
+## 파일 구조
 
-*   `main.py`: The FastAPI backend application. Contains all API endpoints, RAG logic, LLM interaction, and Qdrant setup.
-*   `templates/index.html`: The main HTML file for the chat interface. Includes CSS for styling and JavaScript for frontend logic.
-*   `static/marked.min.js`: The `marked.js` library used for rendering Markdown in the chat display. (Note: This file is assumed to be provided or obtained separately).
-*   `requirements.txt`: Lists the Python dependencies for the project.
-*   `README.md`: This file, providing documentation for the project.
-*   `qdrant_storage/` (Optional, created by Docker): If using the Docker command above, this directory stores Qdrant data.
+*   `main.py`: FastAPI 백엔드 애플리케이션. 모든 API 엔드포인트, RAG 로직, LLM 상호작용 및 Qdrant 설정을 포함합니다.
+*   `templates/index.html`: 채팅 인터페이스를 위한 기본 HTML 파일. 스타일링을 위한 CSS와 프론트엔드 로직을 위한 JavaScript를 포함합니다.
+*   `static/marked.min.js`: 채팅창에 Markdown을 렌더링하는 데 사용되는 `marked.js` 라이브러리. (참고: 이 파일은 별도로 제공되거나 구해야 합니다).
+*   `requirements.txt`: 프로젝트의 Python 의존성 목록입니다.
+*   `README.md`: 이 파일, 프로젝트 문서를 제공합니다.
+*   `qdrant_storage/` (선택 사항, Docker에 의해 생성됨): 위의 Docker 명령을 사용하는 경우 이 디렉토리에 Qdrant 데이터가 저장됩니다.
 
 ---
-This `README.md` provides a comprehensive guide for setting up, running, and using the application.
+이 `README.md`는 애플리케이션 설정, 실행 및 사용에 대한 포괄적인 가이드를 제공합니다.
